@@ -1,0 +1,316 @@
+# Map generally tables with numbers between article and supplement results
+
+example.repbox.num.match = function() {
+  project.dir = "~/statabox/supp/aer_vol_106_issue_5_article_43"
+  project.dir = "/home/rstudio/statabox/supp/aejapp_vol_6_issue_3_article_7"
+  project.dir = "~/repbox/projects/testsupp"
+  res = repbox.num.match(project.dir)
+  num.df = res$num.df
+}
+
+
+repbox_match = function(project.dir, verbose=TRUE, force=FALSE) {
+  restore.point("repbox_match")
+  project = basename(project.dir)
+  #project.dir = "~/statabox/supp/aejpol_vol_9_issue_2_article_9"
+  repbox.dir = paste0(project.dir,"/repbox")
+  if (!force) {
+    if (file.exists(paste0(repbox.dir,"/matched_tabs.Rds"))) {
+      if (verbose) {
+        cat("\nHave already matched PDF tables and code results for ", project,"\n")
+      }
+      return(invisible())
+    }
+  }
+
+
+  if (!file.exists(paste0(repbox.dir, "/arttab.Rds"))) {
+
+    if (verbose) {
+      artfiles = list.files(paste0(project.dir,"/arttxt"))
+      if (length(artfiles)==0) {
+        cat(paste0("\n\tNo article text in project ", project))
+      } else {
+        cat(paste0("\n\tNo tables extracted from article in project ", project))
+      }
+      return(invisible())
+    }
+  }
+  if (!file.exists(paste0(repbox.dir, "/stata/repbox_results.Rds"))) {
+    if (verbose) {
+      cat(paste0("\n\tNo results files from running do files exists for  project ", project))
+      return(invisible())
+    }
+  }
+  res = repbox.num.match(project.dir)
+
+  saveRDS(res, paste0(repbox.dir,"/matched_tabs.Rds"))
+  invisible(res)
+}
+
+
+
+repbox.num.match = function(project.dir) {
+  restore.point("repbox.num.match")
+  su = readRDS.or.null(paste0(project.dir,"/repbox/stata/repbox_results.Rds"))
+  run.df = su$run.df
+  res = extract.log.numbers(run.df)
+  run.df = res$run.df
+  num.df = res$num.df
+
+  # We need to add orgline to store references to colorbar elements
+  num.df = left_join(num.df, select(run.df, re.row, orgline), by="re.row")
+
+  num.df = num.df %>%
+    ungroup() %>%
+    # Only use numbers with a decimal point
+    # Otherwise there are just too many wrong matches
+    arrange(num.val) %>%
+    mutate(sup.row = seq_len(NROW(num.df)))
+
+  tabs.df = readRDS.or.null(paste0(project.dir,"/repbox/arttab.Rds"))
+
+
+  loc.df = bind_rows(tabs.df$loc.df)
+  loc.df = filter(loc.df, type=="num")
+  loc.df$shown.deci = nchar(str.right.of(loc.df$num.str,".",not.found = NA)) %>% na.val(0)
+  loc.df = mutate(loc.df, single.digit = shown.deci==0 & num.val >=0 & num.val <=0)
+
+  loc.df$loc.row = seq_len(NROW(loc.df))
+  loc.df = loc.df %>%
+    group_by(tabid) %>%
+    mutate(tab.num.count = sum(!single.digit)) %>%
+    ungroup()
+
+  m = find.num.matchings(num.df, loc.df)
+
+
+  df = loc.df %>%
+    left_join(m, by="loc.row") %>%
+    select(-line) %>%
+    left_join(rename(num.df, sup.num.val=num.val, sup.num.str=num.str, sup.shown.deci=shown.deci), by="sup.row")
+
+  num.match.agg = df %>%
+    filter(!is.na(donum), !single.digit) %>%
+    group_by(tabid) %>%
+    mutate(
+      glob.match.count = n_distinct(loc.row,na.rm = TRUE),
+      glob.match.share = glob.match.count / tab.num.count
+    ) %>%
+    group_by(tabid, donum,line) %>%
+    mutate(
+      line.match.count = n_distinct(loc.row, na.rm=TRUE)
+    ) %>%
+    group_by(tabid, donum, tab.num.count, glob.match.count, glob.match.share) %>%
+    summarize(
+      match.count = n_distinct(loc.row,na.rm = TRUE),
+      match.share = match.count / tab.num.count,
+      best.cmd.match.count = suppressWarnings(max(line.match.count, na.rm=TRUE)),
+      best.cmd.match.share = best.cmd.match.count / tab.num.count
+    ) %>%
+    ungroup() %>%
+    arrange(tabid, desc(match.share)) %>%
+    group_by(tabid) %>%
+    slice(1) %>%
+    left_join(select(tabs.df, tabid, tpname), by="tabid") %>%
+    select(tabid, donum, tpname, tab.num.count, match.share, best.cmd.match.share, glob.match.share, everything())
+
+
+  # match best donum back to def
+  df = left_join(df, select(num.match.agg, tabid, best.donum=donum), by="tabid")
+
+  # Create data frames that can be used for interactive search
+  # in HTML pages
+
+  # To implement a faster search, we make one key the following
+  # Assumption: Numbers in PDF tables have not more decimal digits
+  #             than in the Stata-log tables.
+  # This means when adjusting for rounding, we will only round the
+  # Stata-log numbers to the number of digits of the PDF table.
+  # Not the other way round.
+  # This allows us to sort the stata numbers in num.df increasingly
+  # by value and only store the rows of the first and last match
+  # for each PDF number. All rows inbetween in num.df will then also
+  # match.
+
+
+  temp.df = df %>%
+    group_by(loc.row) %>%
+    summarize(
+      start.sup.row = min(sup.row),
+      end.sup.row = max(sup.row),
+      num.sup.row = sum(!is.na(sup.row)),
+      num.sup.row.ok = num.sup.row == (end.sup.row-start.sup.row+1),
+      matches.best.donum = any(donum == best.donum)
+    )
+  if (any(!temp.df$num.sup.row.ok,na.rm = TRUE)) {
+    stop("Somehow min and max row do not contain all rows. Check what is going on.")
+  }
+
+  loc.df = left_join(loc.df, temp.df, by="loc.row")
+
+
+  loc.li = split(loc.df, loc.df$tabid)
+
+
+  tab.span.txt = sapply(seq_along(loc.li), function(i) {
+    make.tab.span.txt(tab = tabs.df[i,], tloc.df = loc.li[[i]])
+  })
+
+
+  nloc.df  = loc.df %>%
+    select(tabid, num.val, start.sup.row, end.sup.row)
+
+  # We will store the PDF numbers in the HTML file
+  # in a list with one element per tabid
+  loc.mat.li = lapply(loc.li, function(idf) {
+    restore.point("jdksdj")
+    n = NROW(idf)
+    idf$hue = round(((0:(n-1))/n)*300,3)
+    rows = idf$num.sup.row == 0 | !is.true(idf$matches.best.donum)
+    idf$hue[rows] = NA
+    # Same numbers get same hue
+    idf = idf %>%
+      ungroup() %>%
+      mutate(
+        row = match(line, unique(sort(line))),
+        ind = 1:n()
+      ) %>%
+      group_by(num.val) %>%
+      mutate(
+        hue = first(hue)
+      ) %>%
+      ungroup()
+    as.matrix(select(idf, start.sup.row, end.sup.row, hue, row, col, ind))
+  })
+
+  # [2,4,75.234,1,3,4] = [start.sup.row, end.sup.row, hue, row, col, ind]
+  pdf.num.json = jsonlite::toJSON((loc.mat.li))
+
+  # The stata numbers are in one big sorted string array
+  stata.num.df = num.df %>%
+    add.donum(su$dotab) %>%
+    select(re.row,local.num.ind, donum, orgline, shown.deci) %>%
+    mutate(orgline = orgline, shown.deci = ifelse(shown.deci==0,0,1))
+  stata.num.json = stata.num.df %>%
+    as.matrix() %>%
+    jsonlite::toJSON()
+
+  list(num.match.agg = num.match.agg, pdf.num.json = pdf.num.json, stata.num.json = stata.num.json, run.err.num.span.txt = run.df$num.span.txt, tab.span.txt = tab.span.txt, num.df = num.df)
+}
+
+
+find.num.matchings = function(num.df, loc.df) {
+  restore.point("find.num.matchings")
+
+  empty.res = cbind(loc.row=integer(0),sup.row=integer(0),match.ind=integer(0))
+
+
+
+  tab.val = loc.df[["num.val"]]
+  deci = loc.df[["shown.deci"]]
+  #tol = ifelse(10^(-(deci+1)))
+  sup.val = num.df[["num.val"]]
+
+  rows = seq_along(tab.val)
+  match.coef = do.call(rbind,lapply(rows, function(i) {
+    match = which(round(sup.val, deci[i])==tab.val[i])
+    if (length(match)==0) return(empty.res)
+    cbind(loc.row=i, sup.row=match, match.ind = seq_along(match))
+  }))
+  as.data.frame(match.coef)
+}
+
+
+extract.log.numbers = function(run.df) {
+  restore.point("extract.log.numbers")
+  fp = "([+\\-−]|([+\\-−] ))?(([0-9]*(,[0-9][0-9][0-9])+|([0-9]+))([.][0-9]*)?|[.][0-9]+)"
+
+
+  logtxt = run.df$logtxt
+
+  unique(run.df$cmd)
+  ignore.cmds = c("use","gen","g","drop","keep","set","replace","save","preserve","restore","import")
+  logtxt[is.na(logtxt)] = ""
+  logtxt[run.df$cmd %in% ignore.cmds] = ""
+  run.df$re.row = seq_len(NROW(run.df))
+
+
+
+  pos = str_locate_all(logtxt, fp)
+  num.str = str.at.pos(logtxt,pos)
+
+  run.df$num.span.txt = sapply(seq_along(logtxt), function(i) {
+    #restore.point("sksfkjsfkjdk")
+    if (isTRUE(logtxt[i]=="")) return(run.df$logtxt[i])
+
+    tag.numbers.in.text(logtxt[i], id.prefix = paste0("log-num-",i),pos=pos[[i]], num.str = num.str[[i]])
+  })
+
+
+  line.pos = str_locate_all(logtxt,fixed("\n"))
+
+  res = find.pos.lines(pos,line.pos,add.lines.pos = TRUE)
+  line.li = find.pos.lines(pos,line.pos)
+  line.pos.start = find.line.pos.start(pos,line.pos, line.li)
+  #line.starts = lapply(line.pos, function(po) {
+  #  c(1, po[,1]+1)
+  #})
+
+  table.line.pos = str_locate_all(logtxt,fixed("\n----"))
+
+  tab.line.li = find.pos.lines(pos,table.line.pos)
+
+  pos.start = lapply(pos, function(po) po[,1])
+  pos.end = lapply(pos, function(po) po[,2])
+
+  equal_pos = str_locate_all(logtxt,'[ ]+[=][ ]+')
+
+  after_equal = lapply(seq_along(pos), function(i) {
+    eq = equal_pos[[i]]
+    if (NROW(eq)==0) return(rep(FALSE, NROW(pos[[i]])))
+    pos[[i]][,1] %in% (equal_pos[[i]][,2]+1)
+  })
+
+  num.df = run.df %>%
+    select(donum, line, counter,cmd, is.regcmd, re.row) %>%
+    mutate(pos.start, pos.end, num.str=num.str, num.line = line.li, num.table.part = tab.line.li, after_equal=after_equal, line.pos.start=line.pos.start) %>%
+    unnest(c(num.str, num.line, num.table.part, pos.start, pos.end, after_equal, line.pos.start)) %>%
+    mutate(line.pos.end = line.pos.start + (pos.end-pos.start)) %>%
+    group_by(re.row) %>%
+    mutate(
+      local.num.ind = seq_len(n()),
+      id = paste0("log-num-",re.row,"-",seq_len(n()))
+    ) %>%
+    ungroup() %>%
+    mutate(
+      num.str = gsub("+","",num.str, fixed=TRUE),
+      num.str = gsub(",","",num.str, fixed=TRUE) %>% trimws(),
+      num.val = suppressWarnings(as.numeric(num.str)),
+      shown.deci = nchar(str.right.of(num.str,".",not.found = NA)) %>% na.val(0),
+      num.deci = nchar(str.right.of(num.val,".",not.found = NA)) %>% na.val(0)
+    ) %>%
+    group_by(re.row, num.line) %>%
+    mutate(simple.col = seq_len(n())) %>%
+    ungroup()
+
+
+  list(run.df=run.df, num.df=num.df)
+
+
+}
+
+
+find.pos.lines = function(pos, line.pos =str_locate_all(txt.li,fixed("\n")), txt.li, add.lines.pos=FALSE) {
+  lapply(seq_along(pos), function(i) {
+    findInterval(pos[[i]][,1], line.pos[[i]][,1])+1
+  })
+}
+
+find.line.pos.start = function(pos, line.pos, lines) {
+  lapply(seq_along(pos), function(i) {
+    li.start = c(0,line.pos[[i]][,1])
+    pos[[i]][,1]-li.start[lines[[i]]]
+  })
+}
+

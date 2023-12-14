@@ -1,0 +1,314 @@
+# Strategy: We will only store the aggregate match quality on
+# regression level, not the information for the single
+# coefficient matches. We will create another function
+# that can compute the coefficient matches on demand
+# That should work sufficiently quick and we don't need to
+# worry about excessive storage size of our matching data
+
+example = function() {
+  library(repboxArt)
+  project.dir = "~/repbox/projects_reg/aejapp_3_2_2"
+  #repbox_to_regdb(project.dir)
+  #art_update_project(project.dir, overwrite=FALSE)
+
+  project_log_extract_num(project.dir)
+
+  parcels = regdb_load_parcels(project.dir,c("art_reg","base_regcoef","base_core","art_tab_cell","base_regscalar","stata_log_num"))
+
+  numa = match_project_all_num(project.dir, parcels)
+
+  ma_df = match_project_reg(project.dir, numa, parcels)
+
+  rstudioapi::filesPaneNavigate(project.dir)
+}
+
+match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbox_map_opts(), verbose=TRUE) {
+  restore.point("match_project_reg")
+  parcels = regdb_load_parcels(project.dir,c("art_reg","base_regcoef","base_core"), parcels)
+
+  art_reg = parcels$art_reg$art_reg
+  if (is.null(art_reg)) {
+    if (verbose) cat("\nNo regressions extracted from article.\n")
+    return(parcels)
+  }
+  art_regcoef = parcels$art_reg$art_regcoef
+  art_regcoef$a.row = seq_rows(art_regcoef)
+
+  art_regcoef = left_join(art_regcoef, select(art_reg, regid, art_ncoef = ncoef), by="regid")
+
+  reg = parcels$base_core$reg
+  if (is.null(art_reg)) {
+    if (verbose) cat("\nNo regressions extracted from supplement.\n")
+    return(NULL)
+  }
+
+  regcoef = parcels$base_regcoef$regcoef
+  regcoef$c.row = seq_rows(regcoef)
+  regcoef = left_join(regcoef, select(reg, step, code_ncoef = ncoef), by="step")
+
+  if (NROW(art_regcoef)==0) {
+    if (verbose)  cat(paste0("\n\tNo regression tables found in article of project ", project.dir))
+    return(parcels)
+  }
+  if (NROW(regcoef)==0) {
+    if(verbose) cat(paste0("\n\tNo regression results from supplement of project ", project.dir))
+    return(parcels)
+  }
+
+  # Map all matched coefficients from article and supplement
+  mdf1 =
+    inner_join(art_regcoef %>% rename(a_coef=coef, a_coef_deci = coef_num_deci), numa, by=c(a_coef="a_num", a_coef_deci = "a_deci"))
+  mdf1 = inner_join(regcoef %>% rename(c_label=label, c_coef=coef) %>% select(-artid), mdf1, by=c(c_coef="c_num"))
+
+  # 3 Versions for interpretation of value in ( ): se, t or p
+  coef_mdf = bind_rows(
+    mutate(mdf1, paren_type = "se", c_paren = se),
+    mutate(mdf1, paren_type = "t", c_paren = t),
+    mutate(mdf1, paren_type = "p", c_paren = p)
+  )
+
+  # Match again all parenthesis:
+  # That is because we also want to have rows where just the parenthesis maps
+  # but not the coefficient
+  paren_mdf_a =
+    inner_join(art_regcoef %>% rename(a_coef=coef, a_coef_deci=coef_num_deci), numa, by=c(paren="a_num", paren_num_deci = "a_deci"))
+
+  regcoef2 = regcoef %>% rename(c_label=label, c_coef=coef) %>% select(-artid)
+
+  paren_mdf = bind_rows(
+    inner_join(regcoef2 ,paren_mdf_a, by=c(se="c_num")) %>% mutate(paren_type = "se", c_paren = se),
+    inner_join(regcoef2 ,paren_mdf_a, by=c(t="c_num")) %>% mutate(paren_type = "t", c_paren = t),
+    inner_join(regcoef2 ,paren_mdf_a, by=c(p="c_num")) %>% mutate(paren_type = "p", c_paren = p)
+  )
+
+  paren_mdf = anti_join(paren_mdf, coef_mdf , by=c("a.row","c.row"))
+
+  mdf = bind_rows(coef_mdf, paren_mdf)
+  mdf = left_join(mdf, select(art_reg, regid, tabid), by="regid")
+
+  #colnames(paren_mdf)
+  #colnames(mdf)
+  #setdiff(colnames(mdf),intersect(colnames(paren_mdf), colnames(mdf)))
+  #setdiff(colnames(paren_mdf),intersect(colnames(paren_mdf), colnames(mdf)))
+  #setequal(colnames(paren_mdf), colnames(mdf))
+
+
+  # Compute match of coefficient and parentheses
+  mdf = mdf %>% mutate(
+    coef_deci_diff = abs(a_coef-c_coef) / 10^-a_coef_deci,
+    paren_deci_diff = abs(paren-c_paren) / 10^-paren_num_deci
+  )
+
+
+  mdf = mdf %>% mutate(
+    row_match_score = case_when(
+      coef_deci_diff <= 0.501 & paren_deci_diff <= 0.501 ~ 1,
+      # Single small rounding error
+      coef_deci_diff <= 0.501 & paren_deci_diff <= 1.1 ~ 0.75,
+      coef_deci_diff <= 1.1 & paren_deci_diff <= 0.501 ~ 0.75,
+      # Double small rounding error
+      coef_deci_diff <= 1.1 & paren_deci_diff <= 1.1 ~ 0.1,
+      # Only one coefficient matches
+      coef_deci_diff < 0.501 ~ 0.1,
+      paren_deci_diff < 0.501 ~ 0.1,
+      # Only one coefficient matches with a small rounding error
+      coef_deci_diff <= 1.1 ~ 0.01,
+      paren_deci_diff <= 1.1 ~ 0.01,
+      TRUE ~ 0
+    ),
+    row_match_type = case_when(
+      coef_deci_diff <= 0.501 & paren_deci_diff <= 0.501 ~ "exact",
+      # Single small rounding error
+      coef_deci_diff <= 0.501 & paren_deci_diff <= 1.1 ~ "paren_approx",
+      coef_deci_diff <= 1.1 & paren_deci_diff <= 0.501 ~ "coef_approx",
+      # Double small rounding error
+      coef_deci_diff <= 1.1 & paren_deci_diff <= 1.1 ~ "both_approx",
+      # Only one coefficient matches
+      coef_deci_diff < 0.501 ~ "just_coef",
+      paren_deci_diff < 0.501 ~ "just_paren",
+      # Only one coefficient matches with a small rounding error
+      coef_deci_diff <= 1.1 ~ "just_coef_approx",
+      paren_deci_diff <= 1.1 ~ "just_paren_approx",
+      TRUE ~ "no_match"
+    )
+  )
+
+  # Multiple (coef, se) pairs from code may
+  # match a particular (coef, se) pair from the article
+  # We will just keep the matches with the highest points
+  mdf = mdf %>%
+    group_by(a.row, c.row, paren_type) %>%
+    filter(row_match_score == max(row_match_score)) %>%
+    ungroup()
+
+  # Store for each article and code regression combi
+  # the total match score
+  ma_df = mdf %>%
+    # Our filter above may still keep multiple article code
+    # combies for a single coefficient.
+    # Just take the first one, so we can afterwards
+    # sum up row_match_scores over all article coefs
+    group_by(a.row, c.row, paren_type) %>%
+    slice(1) %>%
+    # Now we perform the aggregation on regression level
+    group_by(tabid, regid, step, paren_type, art_ncoef, code_ncoef) %>%
+    summarize(
+      match_score = sum(row_match_score) / first(art_ncoef),
+      num_exact = sum(row_match_type=="exact"),
+      num_coef_approx = sum(row_match_type=="coef_approx"),
+      num_paren_approx = sum(row_match_type=="paren_approx"),
+      num_both_approx = sum(row_match_type=="both_approx"),
+      num_just_coef = sum(row_match_type=="just_coef"),
+      num_just_paren = sum(row_match_type=="just_paren"),
+      num_just_coef_approx = sum(row_match_type=="just_coef_approx"),
+      num_just_paren_approx = sum(row_match_type=="just_paren_approx"),
+      num_no_match = art_ncoef - num_exact - num_coef_approx - num_paren_approx - num_both_approx - num_just_coef - num_just_paren - num_just_coef_approx- num_just_paren_approx
+    ) %>%
+    group_by(regid) %>%
+    mutate(
+      art_best_match_score = suppressWarnings(max(match_score, na.rm = TRUE))
+    ) %>%
+    # compute best fit for different types of parenthesis (se, t, or p)
+    # we assume that each table only has a single type of parenthesis
+    group_by(tabid, paren_type) %>%
+    mutate(
+      # Is it ok to just take the sum here, even though we may have
+      # multiple matches?
+      tab_par_match_score = sum(art_best_match_score)
+    ) %>%
+    group_by(tabid) %>%
+    mutate(is_best_paren_type = tab_par_match_score == max(tab_par_match_score)) %>%
+    ungroup() %>%
+    # only keep best paren_type
+    filter(is_best_paren_type)
+
+  # Require a minimum match score to keep in data base
+  # Be more lenient if there are fewer coefficients
+
+  keep = rep(FALSE, NROW(ma_df))
+
+  n_min_score = opts$reg_min_match_score_by_art_ncoef
+  for (i in seq_along(n_min_score)) {
+    keep = keep | (ma_df$match_score >= n_min_score[i] & ma_df$art_ncoef == i)
+  }
+  min_score = opts$reg_min_match_score
+  keep = keep | (ma_df$match_score >= n_min_score[i] & ma_df$art_ncoef > length(n_min_score))
+
+  ma_df = ma_df[keep,]
+
+  #ma_df = filter(ma_df, (match_score >= 0.5) | (art_ncoef <= 2 & match_score >= 0.1))
+
+
+  ma_df$coef_match_score = ma_df$match_score
+  # Also map runid (better index than step for creating reports)
+  ma_df = left_join_overwrite(ma_df, select(reg, step, runid), by="step")
+
+  stat_df = match_reg_stats(ma_df, parcels)
+  stat_agg = stat_df %>%
+    group_by(regid, runid) %>%
+    summarize(
+      art_nstat = n(),
+      code_nfoundstat = sum(!is.na(matched)),
+      n_matched_stat = sum(is.true(matched)),
+      stat_match_score = ifelse(code_nfoundstat > 0, n_matched_stat / code_nfoundstat, NA_real_)
+    )
+
+  ma_df = left_join_overwrite(ma_df, stat_agg, by=c("regid","runid")) %>%
+    mutate(match_score = ifelse(is.na(stat_match_score), coef_match_score,
+      (coef_match_score * art_ncoef + stat_match_score * code_nfoundstat) /
+        (art_ncoef + code_nfoundstat)
+     ))
+
+  artid = basename(project.dir)
+  ma_df$artid = artid
+
+  # To do: check why sometimes duplicate rows exist
+  ma_df = unique(ma_df)
+
+
+  parcels = regdb_save_match_reg(project.dir, ma_df, stat_df, parcels)
+  parcels
+}
+
+
+
+match_reg_stats = function(ma_df, parcels=NULL) {
+  restore.point("match_reg_stats")
+  parcels = regdb_load_parcels(project.dir,c("art_reg","base_regcoef","base_core","base_regscalar"), parcels)
+
+  art_regstat = parcels$art_reg$art_regstat
+  reg = parcels$base_core$reg
+
+  # Just essential key columns in ma_df
+  m_df = select(ma_df, regid, runid) %>% unique()
+  m_df$c.reg.row = match(m_df$runid, reg$runid)
+
+  # Article regression statistics matched to ma_df
+  stat_df = inner_join(m_df, select(art_regstat, regid, a_stat = stat_name, a_num = num, a_deci = num_deci), by="regid") %>% unique()
+
+  stat_df$c_num = stat_df$c_deci = NA_real_
+  stat_df$deci_diff = NA_real_
+  stat_df$c_stat = ""
+  stat_df$matched = NA
+  stats = unique(stat_df$a_stat)
+
+  if ("nobs" %in% stats) {
+    stat = "nobs"
+    rows = which(stat_df$a_stat==stat)
+    stat_df$c_stat[rows] = "nobs"
+    stat_df$c_num[rows] = reg$nobs[stat_df$c.reg.row[rows]]
+    stat_df$matched[rows] = stat_df$a_num[rows] == stat_df$c_num[rows]
+
+    # Alternatively try nobs_org
+    # that is not correct, but if it matches
+    # most likely we have identified the correct
+    # regression
+    rows = rows[!stat_df$matched[rows]]
+
+    stat_df$c_num[rows]=reg$nobs_org[stat_df$c.reg.row[rows]]
+    stat_df$c_stat[rows] = "nobs_org"
+    stat_df$matched[rows] = stat_df$a_num[rows] == stat_df$c_num[rows]
+      }
+
+  # r2
+  # TO DO: Need to match accounting for rounding
+  if ("r2" %in% stats | "pseudo_r2" %in% stats) {
+
+    rows = which(stat_df$a_stat %in% c("r2"| "pseudo_r2"))
+    stat_df$c_stat[rows] = "r2"
+    stat_df$c_num[rows]= reg$r2[stat_df$c.reg.row[rows]]
+    stat_df$deci_diff[rows] = abs(stat_df$a_num[rows] - stat_df$c_num[rows]) / abs(10^-(stat_df$a_deci))
+    stat_df$matched[rows] = stat_df$deci_diff[rows] < 0.501
+  }
+
+
+  stat_df$found = !is.na(stat_df$matched)
+  stat_df
+}
+
+
+regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
+  restore.point("regdb_save_match_reg")
+  stat_df$artid = basename(project.dir)
+  stat_df$stat_name = stat_df$a_stat
+  regdb_check_data(stat_df, "match_regstat")
+  regdb_check_data(ma_df, "match_reg")
+  parcels$match_reg =  list(match_reg=ma_df)
+  parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
+  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project.dir, "map","regdb"))
+
+  parcels
+}
+
+compare_ma_df_art_reg = function(art_reg, ma_df) {
+  best_ma_df = ma_df %>%
+    group_by(regid) %>%
+    filter(match_score == max(match_score)) %>%
+    summarize(
+      match_score = max(match_score),
+      num_code_regs = n()
+    )
+
+  art_reg = left_join_overwrite(art_reg, best_ma_df, by="regid") %>%
+    mutate(num_code_regs = na.val(num_code_regs,0))
+}
