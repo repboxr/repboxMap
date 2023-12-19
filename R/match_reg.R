@@ -5,10 +5,10 @@
 # That should work sufficiently quick and we don't need to
 # worry about excessive storage size of our matching data
 
-match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbox_map_opts(), verbose=TRUE) {
+match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbox_map_opts(), verbose=TRUE) {
   restore.point("match_project_reg")
 
-  parcels = regdb_load_parcels(project.dir,c("art_reg","base_regcoef","base_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
+  parcels = regdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
 
 
   art_reg = parcels$art_reg[["art_reg"]]
@@ -18,7 +18,7 @@ match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbo
   }
   art_regcoef = parcels$art_reg$art_regcoef
   if (NROW(art_regcoef)==0) {
-    if (verbose)  cat(paste0("\n\tNo regression tables found in article of project ", project.dir))
+    if (verbose)  cat(paste0("\n\tNo regression tables found in article of project ", project_dir))
     return(parcels)
   }
 
@@ -38,7 +38,7 @@ match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbo
   regcoef = left_join(regcoef, select(reg, step, variant, code_ncoef = ncoef), by=c("step","variant"))
 
   if (NROW(regcoef)==0) {
-    if(verbose) cat(paste0("\n\tNo regression results from supplement of project ", project.dir))
+    if(verbose) cat(paste0("\n\tNo regression results from supplement of project ", project_dir))
     return(parcels)
   }
 
@@ -173,9 +173,9 @@ match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbo
   # interpretation of an article's regression tables
   #temp = mdf %>% filter(step == 27)
 
-  big_res = mdf_to_big_reg_matches(project.dir, mdf, parcels, opts)
+  big_res = mdf_to_big_reg_matches(project_dir, mdf, parcels, opts)
 
-  small_res = mdf_to_small_reg_matches(project.dir, mdf, parcels, opts, big_res=big_res)
+  small_res = mdf_to_small_reg_matches(project_dir, mdf, parcels, opts, big_res=big_res)
 
   # Combine results and save
   ma_df = bind_rows(big_res$ma_df, small_res$ma_df)
@@ -196,14 +196,14 @@ match_project_reg = function(project.dir, numa=NULL,  parcels=NULL, opts = repbo
     ))
 
 
-  parcels = regdb_save_match_reg(project.dir, ma_df, stat_df, parcels)
+  parcels = regdb_save_match_reg(project_dir, ma_df, stat_df, parcels)
   parcels
 
 
 }
 
 # The big regression interpretation is the default interpretation of a regression table in an article. Each row corresponds to the coefficients of an explanatory variable.
-mdf_to_big_reg_matches = function(project.dir, mdf, parcels, opts, from_small=FALSE) {
+mdf_to_big_reg_matches = function(project_dir, mdf, parcels, opts, from_small=FALSE) {
   restore.point("mdf_to_big_reg_matches")
   reg = parcels$.reg$reg
 
@@ -272,7 +272,7 @@ mdf_to_big_reg_matches = function(project.dir, mdf, parcels, opts, from_small=FA
   if (from_small) return(ma_df)
 
 
-  stat_df = match_reg_stats(project.dir, ma_df, parcels)
+  stat_df = match_reg_stats(project_dir, ma_df, parcels)
 
   if (!is.null(stat_df)) {
     stat_agg = stat_df %>%
@@ -296,7 +296,7 @@ mdf_to_big_reg_matches = function(project.dir, mdf, parcels, opts, from_small=FA
     ma_df$code_nfoundstat = 0
   }
 
-  artid = basename(project.dir)
+  artid = basename(project_dir)
   ma_df$artid = artid
 
   # To do: check why sometimes duplicate rows exist
@@ -308,7 +308,7 @@ mdf_to_big_reg_matches = function(project.dir, mdf, parcels, opts, from_small=FA
 
 
 # Small regressions interpret each row in the table as a separate regression while a big regression interprets each row as an explanatory variable
-mdf_to_small_reg_matches = function(project.dir, mdf, parcels, opts, big_res) {
+mdf_to_small_reg_matches = function(project_dir, mdf, parcels, opts, big_res) {
   restore.point("mdf_to_small_reg_matches")
   art_sreg = parcels$art_reg$art_small_reg
 
@@ -321,7 +321,7 @@ mdf_to_small_reg_matches = function(project.dir, mdf, parcels, opts, big_res) {
 
   # Rerun code for big_reg using the converted mdf
   # but don't yet map regression statistics
-  ma_df = mdf_to_big_reg_matches(project.dir, mdf=small_mdf,parcels = parcels,opts = opts, from_small=TRUE)
+  ma_df = mdf_to_big_reg_matches(project_dir, mdf=small_mdf,parcels = parcels,opts = opts, from_small=TRUE)
 
   stat_df = big_res$stat_df %>%
     rename(big_regid = regid) %>%
@@ -353,9 +353,9 @@ mdf_to_small_reg_matches = function(project.dir, mdf, parcels, opts, big_res) {
 
 
 
-match_reg_stats = function(project.dir, ma_df, parcels=NULL) {
+match_reg_stats = function(project_dir, ma_df, parcels=NULL) {
   restore.point("match_reg_stats")
-  parcels = regdb_load_parcels(project.dir,c("art_reg","base_regscalar"), parcels)
+  parcels = regdb_load_parcels(project_dir,c("art_reg","base_regscalar"), parcels)
 
 
 
@@ -437,10 +437,10 @@ match_reg_stats = function(project.dir, ma_df, parcels=NULL) {
 }
 
 
-regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
+regdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
   restore.point("regdb_save_match_reg")
   if (NROW(stat_df)>0) {
-    stat_df$artid = basename(project.dir)
+    stat_df$artid = basename(project_dir)
     stat_df$stat_name = stat_df$a_stat
   } else {
     stat_df = NULL
@@ -450,7 +450,7 @@ regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
   regdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project.dir, "map","regdb"))
+  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","regdb"))
 
   parcels
 }
@@ -459,10 +459,10 @@ regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
 
 
 
-regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
+regdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
   restore.point("regdb_save_match_reg")
   if (NROW(stat_df)>0) {
-    stat_df$artid = basename(project.dir)
+    stat_df$artid = basename(project_dir)
     stat_df$stat_name = stat_df$a_stat
   } else {
     stat_df = NULL
@@ -472,7 +472,7 @@ regdb_save_match_reg = function(project.dir, ma_df, stat_df, parcels=lit()) {
   regdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project.dir, "map","regdb"))
+  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","regdb"))
 
   parcels
 }

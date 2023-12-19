@@ -2,13 +2,13 @@
 
 # Currently we just compare one (best) map using a simple heuristic
 # There is considerable scope for improvement
-map_cells_and_blocks = function(project.dir, parcels=NULL, numa, opts) {
+map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   restore.point("map_cells_and_blocks")
   #stop()
-  parcels = regdb_load_parcels(project.dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","base_regcoef","base_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
+  parcels = regdb_load_parcels(project_dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","base_regcoef","base_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
 
   if (is.null(parcels$.reg)) {
-    parcels = make_reg_extra_reg_combined_parcels(project.dir, parcels)
+    parcels = make_reg_extra_reg_combined_parcels(project_dir, parcels)
   }
 
 
@@ -164,7 +164,7 @@ map_cells_and_blocks = function(project.dir, parcels=NULL, numa, opts) {
   parcels$map_cell = list(map_cell=cell_df)
   #parcels$map_block = list(map_block=block_df)
 
-  regdb_save_parcels(parcels[c("map_cell")],file.path(project.dir,"map","regdb"))
+  regdb_save_parcels(parcels[c("map_cell")],file.path(project_dir,"map","regdb"))
 
 
   parcels

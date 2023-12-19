@@ -1,15 +1,15 @@
 example = function() {
   library(repboxArt)
-  project.dir = standardizePath("~/repbox/projects_reg/aejpol_3_4_8")
-  #art_update_project(project.dir, overwrite=FALSE)
+  project_dir = standardizePath("~/repbox/projects_reg/aejpol_3_4_8")
+  #art_update_project(project_dir, overwrite=FALSE)
 
-  match_project_all_num(project.dir)
+  match_project_all_num(project_dir)
 }
 
 
-match_project_all_num = function(project.dir,  parcels=NULL, verbose=TRUE) {
+match_project_all_num = function(project_dir,  parcels=NULL, verbose=TRUE) {
   restore.point("match_project_all_num")
-  parcels = regdb_load_parcels(project.dir,c("art_tab_cell","base_regcoef","base_regscalar","stata_log_num"), parcels)
+  parcels = regdb_load_parcels(project_dir,c("art_tab_cell","base_regcoef","base_regscalar","stata_log_num"), parcels)
 
   if (is.null(parcels[[".reg"]])) {
     stop("Please first generate parcels$.reg by calling make_reg_extra_reg_combined_parcels")

@@ -1,12 +1,12 @@
 # Ideas for more advanced matching of numbers using similiarity structures
 
 example.matching = function() {
-  project.dir = "/home/rstudio/statabox/supp/aejapp_vol_6_issue_3_article_7"
+  project_dir = "/home/rstudio/statabox/supp/aejapp_vol_6_issue_3_article_7"
 
-  project.dir = "~/repbox/projects/testsupp"
-  repbox.dir = paste0(project.dir, "/repbox")
+  project_dir = "~/repbox/projects/testsupp"
+  repbox.dir = paste0(project_dir, "/repbox")
 
-  rstudioapi::filesPaneNavigate(paste0(project.dir,"/repbox/www_rstudio"))
+  rstudioapi::filesPaneNavigate(paste0(project_dir,"/repbox/www_rstudio"))
   rstudioapi::filesPaneNavigate("~/repbox/repbox/R")
 
 
