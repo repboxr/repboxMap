@@ -58,8 +58,8 @@ load_stata_log_df = function(project_dir, parcels = NULL, verbose=TRUE) {
 
   if (is.null(cmd_df) | is.null(log_df)) return(NULL)
 
-  log_df = left_join(run_df, log_df, by=c("artid","runid")) %>%
-    left_join(select(cmd_df, -cmd, -cmdline) , by = c("artid","file_path","line"))
+  log_df = left_join_overwrite(run_df, log_df, by=c("artid","runid")) %>%
+    left_join_overwrite(select(cmd_df, -cmd, -cmdline) , by = c("artid","file_path","line"))
   log_df
 }
 
