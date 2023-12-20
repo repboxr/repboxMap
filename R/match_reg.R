@@ -8,7 +8,7 @@
 match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbox_map_opts(), verbose=TRUE) {
   restore.point("match_project_reg")
 
-  parcels = regdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
 
 
   art_reg = parcels$art_reg[["art_reg"]]
@@ -196,7 +196,7 @@ match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbo
     ))
 
 
-  parcels = regdb_save_match_reg(project_dir, ma_df, stat_df, parcels)
+  parcels = repdb_save_match_reg(project_dir, ma_df, stat_df, parcels)
   parcels
 
 
@@ -355,7 +355,7 @@ mdf_to_small_reg_matches = function(project_dir, mdf, parcels, opts, big_res) {
 
 match_reg_stats = function(project_dir, ma_df, parcels=NULL) {
   restore.point("match_reg_stats")
-  parcels = regdb_load_parcels(project_dir,c("art_reg","base_regscalar"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regscalar"), parcels)
 
 
 
@@ -437,20 +437,20 @@ match_reg_stats = function(project_dir, ma_df, parcels=NULL) {
 }
 
 
-regdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
-  restore.point("regdb_save_match_reg")
+repdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
+  restore.point("repdb_save_match_reg")
   if (NROW(stat_df)>0) {
     stat_df$artid = basename(project_dir)
     stat_df$stat_name = stat_df$a_stat
   } else {
     stat_df = NULL
   }
-  regdb_check_data(stat_df, "match_regstat")
+  repdb_check_data(stat_df, "match_regstat")
 
-  regdb_check_data(ma_df, "match_reg")
+  repdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","regdb"))
+  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","repdb"))
 
   parcels
 }
@@ -459,20 +459,20 @@ regdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
 
 
 
-regdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
-  restore.point("regdb_save_match_reg")
+repdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
+  restore.point("repdb_save_match_reg")
   if (NROW(stat_df)>0) {
     stat_df$artid = basename(project_dir)
     stat_df$stat_name = stat_df$a_stat
   } else {
     stat_df = NULL
   }
-  regdb_check_data(stat_df, "match_regstat")
+  repdb_check_data(stat_df, "match_regstat")
 
-  regdb_check_data(ma_df, "match_reg")
+  repdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  regdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","regdb"))
+  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","repdb"))
 
   parcels
 }

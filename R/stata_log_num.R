@@ -3,7 +3,7 @@
 example = function() {
   project_dir = "/home/rstudio/repbox/projects_reg/aejapp_2_4_8"
   project_dir = "~/repbox/projects_reg/aejpol_3_4_8"
-  cmd_df = readRDS.or.null(file.path(project_dir, "repbox","regdb","stata_cmd.Rds"))[[1]]
+  cmd_df = readRDS.or.null(file.path(project_dir, "repbox","repdb","stata_cmd.Rds"))[[1]]
   num_df = project_log_extract_num(project_dir)
   unique(num_df$cmd)
   unique(setdiff(cmd_df$cmd, ignore_log_stata_commands()))
@@ -21,7 +21,7 @@ ignore_log_stata_commands = function() {
 }
 
 get_stata_log_num = function(project_dir, create_if_missing = TRUE) {
-  file = file.path(project_dir,"map","regdb","stata_log_num.Rds")
+  file = file.path(project_dir,"map","repdb","stata_log_num.Rds")
   if (file.exists(file)) {
     return(readRDS(file)[[1]])
   }
@@ -33,24 +33,24 @@ map_parcel_stata_log_num = function(project_dir, parcels=list(), verbose=TRUE) {
   restore.point("map_parcel_stata_log_num")
   log_df = load_stata_log_df(project_dir, parcels)
   if (is.null(log_df)) {
-    if (verbose) cat("\nNo logs from running the supplement found. Did you call repbox_to_regdb from repboxDB?\n")
+    if (verbose) cat("\nNo logs from running the supplement found. Did you call repbox_to_repdb from repboxDB?\n")
     return(parcels)
   }
   num_df = log_extract_numbers(log_df)
 
-  regdb_load_specs(libs="repboxMap")
-  regdb_check_data(num_df, "stata_log_num")
+  repdb_load_specs(libs="repboxMap")
+  repdb_check_data(num_df, "stata_log_num")
 
   parcels$stata_log_num = list(stata_log_num=num_df)
 
-  dir = file.path(project_dir,"map","regdb")
-  regdb_save_parcels(parcels["stata_log_num"], dir)
+  dir = file.path(project_dir,"map","repdb")
+  repdb_save_parcels(parcels["stata_log_num"], dir)
   parcels
 }
 
 load_stata_log_df = function(project_dir, parcels = NULL, verbose=TRUE) {
   restore.point("load_stat_log_df")
-  parcels = regdb_load_parcels(project_dir, c("stata_cmd","stata_run_cmd","stata_run_log"), parcels)
+  parcels = repdb_load_parcels(project_dir, c("stata_cmd","stata_run_cmd","stata_run_log"), parcels)
 
   cmd_df = parcels$stata_cmd$stata_cmd
   run_df = parcels$stata_run_cmd$stata_run_cmd

@@ -5,7 +5,7 @@
 map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   restore.point("map_cells_and_blocks")
   #stop()
-  parcels = regdb_load_parcels(project_dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","base_regcoef","base_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
+  parcels = repdb_load_parcels(project_dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","base_regcoef","base_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
 
   if (is.null(parcels$.reg)) {
     parcels = make_reg_extra_reg_combined_parcels(project_dir, parcels)
@@ -158,13 +158,13 @@ map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   #     runid = ifelse(length(unique(na.omit(best_runid)))==1,unique(na.omit(best_runid)),0)
   #   )
 
-  regdb_check_data(cell_df,"map_cell")
-  #regdb_check_data(block_df,"map_block")
+  repdb_check_data(cell_df,"map_cell")
+  #repdb_check_data(block_df,"map_block")
 
   parcels$map_cell = list(map_cell=cell_df)
   #parcels$map_block = list(map_block=block_df)
 
-  regdb_save_parcels(parcels[c("map_cell")],file.path(project_dir,"map","regdb"))
+  repdb_save_parcels(parcels[c("map_cell")],file.path(project_dir,"map","repdb"))
 
 
   parcels
@@ -198,14 +198,14 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
   }
 
   reg_coef = reg_coef %>%
-    regdb_null_to_empty("regcoef") %>%
+    repdb_null_to_empty("regcoef") %>%
     left_join(select(parcels$.reg$reg, step, variant, runid), by=c("step","variant"))
 
   reg_df = parcels$art_reg$art_reg
 
 
   stat_df = parcels$art_reg$art_regstat %>%
-    regdb_null_to_empty("art_regstat") #%>%
+    repdb_null_to_empty("art_regstat") #%>%
 #    left_join(select(reg_df, regid, tabid), by="regid")
 
   coef_df = parcels$art_reg$art_regcoef #%>%
@@ -381,7 +381,7 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
   cell_df$is_reg_match[rows] = TRUE
 
   stat_map = parcels$match_regstat$match_regstat %>%
-    regdb_null_to_empty("match_regstat")
+    repdb_null_to_empty("match_regstat")
 
   if (NROW(stat_map)>0) {
     stat_map$stat_deci_dist = ifelse(is.na(stat_map$deci_diff),0,stat_map$deci_diff)

@@ -4,7 +4,7 @@ example = function() {
   library(repboxHtml)
   project_dir = "~/repbox/projects_reg/aejapp_3_4_9"
   project_dir = "~/repbox/projects_reg/aejapp_3_2_2"
-  #repbox_to_regdb(project_dir)
+  #repbox_to_repdb(project_dir)
 
   #opts = repbox_art_opts(single_line_reg = FALSE)
   #art_update_project(project_dir, overwrite=FALSE,opts = opts)
@@ -22,7 +22,7 @@ example = function() {
 map_repbox_project = function(project_dir, parcels=list(), opts = repbox_map_opts()) {
   restore.point("repbox_project_map")
 
-  parcels = regdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core","art_tab_cell","base_regscalar"), parcels=parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core","art_tab_cell","base_regscalar"), parcels=parcels)
 
 
   cell_df = parcels$art_tab_cell$art_tab_cell

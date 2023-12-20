@@ -9,7 +9,7 @@ example = function() {
 
 match_project_all_num = function(project_dir,  parcels=NULL, verbose=TRUE) {
   restore.point("match_project_all_num")
-  parcels = regdb_load_parcels(project_dir,c("art_tab_cell","base_regcoef","base_regscalar","stata_log_num"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_tab_cell","base_regcoef","base_regscalar","stata_log_num"), parcels)
 
   if (is.null(parcels[[".reg"]])) {
     stop("Please first generate parcels$.reg by calling make_reg_extra_reg_combined_parcels")
@@ -21,14 +21,14 @@ match_project_all_num = function(project_dir,  parcels=NULL, verbose=TRUE) {
   if (is.null(cell_df)) return(NULL)
 
   regcoef = parcels$.reg$regcoef %>%
-    regdb_null_to_empty("regcoef") %>%
+    repdb_null_to_empty("regcoef") %>%
     add_col(num_deci=10)
   regscalar = parcels$.reg$regscalar %>%
-    regdb_null_to_empty("regscalar") %>%
+    repdb_null_to_empty("regscalar") %>%
     add_col(num_deci=10)
 
   stata_log_num = parcels$stata_log_num$stata_log_num  %>%
-    regdb_null_to_empty("stata_log_num")
+    repdb_null_to_empty("stata_log_num")
 
   a_df = cell_df %>% filter(type=="num") %>%
     select(num=num, num_deci=num_deci) %>%

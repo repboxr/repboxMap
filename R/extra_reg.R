@@ -1,6 +1,6 @@
 make_reg_extra_reg_combined_parcels = function(project_dir, parcels=NULL) {
   restore.point("make_reg_extra_reg_combined_parcels")
-  parcels = regdb_load_parcels(project_dir,c("base_regcoef","base_core", "base_extra_reg","base_regscalar","base_regstring"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("base_regcoef","base_core", "base_extra_reg","base_regscalar","base_regstring"), parcels)
 
   regcoef = parcels$base_regcoef$regcoef
   reg = parcels$base_core$reg
