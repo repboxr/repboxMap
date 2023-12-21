@@ -450,7 +450,7 @@ repdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
   repdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","repdb"))
+  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "repdb"))
 
   parcels
 }
@@ -472,7 +472,7 @@ repdb_save_match_reg = function(project_dir, ma_df, stat_df, parcels=lit()) {
   repdb_check_data(ma_df, "match_reg")
   parcels$match_reg =  list(match_reg=ma_df)
   parcels$match_regstat = match_regstat=list(match_regstat=stat_df)
-  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "map","repdb"))
+  repdb_save_parcels(parcels[c("match_reg","match_regstat")], dir = file.path(project_dir, "repdb"))
 
   parcels
 }

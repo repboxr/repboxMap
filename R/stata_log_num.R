@@ -43,7 +43,7 @@ map_parcel_stata_log_num = function(project_dir, parcels=list(), verbose=TRUE) {
 
   parcels$stata_log_num = list(stata_log_num=num_df)
 
-  dir = file.path(project_dir,"map","repdb")
+  dir = file.path(project_dir,"repdb")
   repdb_save_parcels(parcels["stata_log_num"], dir)
   parcels
 }
