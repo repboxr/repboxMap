@@ -1,4 +1,4 @@
-parcels_add_tab_ref_to_run_df = function(parcels) {
+parcels_add_tab_ref_to_run_df = function(project_dir, parcels) {
   restore.point("parcels_add_tab_ref_to_run_df")
   parcels = repdb_load_parcels(project_dir, c("stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
 

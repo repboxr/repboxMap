@@ -185,7 +185,7 @@ match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbo
   # +1 same tabid
   # -1 different tabid
   # 0 at least one tabid is not well specified
-  parcels = parcels_add_tab_ref_to_run_df(parcels)
+  parcels = parcels_add_tab_ref_to_run_df(project_dir, parcels)
 
   run_df = parcels$stata_run_cmd$stata_run_cmd
   ma_df = left_join_overwrite(ma_df, select(run_df, runid, code_tabid=tabid), by="runid") %>%
