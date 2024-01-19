@@ -1,0 +1,105 @@
+# Fields with one entry per regression
+
+name: map_reg
+
+descr: |
+  This table combines info from map_cells, match_reg and match_regstat to
+  store best maps in a data base used for meta studies.
+
+  This means only if our map_cell determines that a particular cell in an article
+  table is mapped to a specific regression, we will have the corresponding entry
+  here in map_reg.
+
+index:
+  main_index: [artid, mapid, variant, runid,  regid]
+
+fields:
+  artid:
+    descr: ID of the article that is analyzed.
+
+  mapid:
+    type: int
+    descr: In principal, we might consider multiple maps.
+
+  variant:
+    descr: Variant of the supplement regression that is matched
+
+  step:
+    descr: ID of reg in supplement using DAP
+
+  runid:
+    descr: Alternative reg id
+    type: int
+
+  tabid:
+
+  panel_num:
+    type: int
+
+  regcol:
+    type: int
+
+  regid:
+    descr: ID of reg in article
+
+  cmd:
+
+  lang:
+
+  paren_type:
+    descr: What is most likely shown in the parentheses se, p or t
+
+  match_score:
+    descr: |
+      Number between 0 and 1 describing the overall match quality.
+      This number only uses information from the number of matched coefficients,
+      standard errors (or t / p) and matched statistics.
+      It is subjectively decided how much close matches (one deci distance away)
+      count.
+    type: num
+
+  coef_match_score:
+    type: num
+
+  stat_match_score:
+    type: num
+
+  tabid_ref_match:
+    descr: |
+      Do the tabid references from the code comment match the tabid
+      from the article?
+      +1 they match
+      -1 don't match
+      0 at least one tabid is not well specified
+    type: int
+
+  art_ncoef:
+    type: int
+
+  code_ncoef:
+    type: int
+
+  art_nstat:
+    type: int
+
+  code_nfoundstat:
+    descr: |
+      Just the number of presented stats from the article that
+      we could match by name, even if the values are wrong.
+      Only stats that could be matched by name enter the match_core
+    type: int
+
+
+  is_small_reg:
+    type: bool
+    descr: |
+      A small regression in an article table corresponds to the case that mutliple
+      rows in a table column correspond to different regressions instead of coefficients
+      for different explanatory variables.
+
+      We can create this column by checking whether regid is in art_small_reg or not.
+
+  coef_pos:
+    type: int
+    descr: |
+      Only relevant for small regressions the row of the shown coefficients.

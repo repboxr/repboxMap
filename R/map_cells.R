@@ -159,10 +159,8 @@ map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   #   )
 
   repdb_check_data(cell_df,"map_cell")
-  #repdb_check_data(block_df,"map_block")
 
   parcels$map_cell = list(map_cell=cell_df)
-  #parcels$map_block = list(map_block=block_df)
 
   repdb_save_parcels(parcels[c("map_cell")],file.path(project_dir,"repdb"))
 
