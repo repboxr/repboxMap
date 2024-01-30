@@ -9,7 +9,7 @@ example = function() {
 
 match_project_all_num = function(project_dir,  parcels=NULL, verbose=TRUE) {
   restore.point("match_project_all_num")
-  parcels = repdb_load_parcels(project_dir,c("art_tab_cell","base_regcoef","base_regscalar","stata_log_num"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_tab_cell","regcoef","regscalar","stata_log_num"), parcels)
 
   if (is.null(parcels[[".reg"]])) {
     stop("Please first generate parcels$.reg by calling make_reg_extra_reg_combined_parcels")

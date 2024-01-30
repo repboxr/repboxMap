@@ -5,7 +5,7 @@
 map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   restore.point("map_cells_and_blocks")
   #stop()
-  parcels = repdb_load_parcels(project_dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","base_regcoef","base_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
+  parcels = repdb_load_parcels(project_dir, c("art_reg","art_tab", "art_tab_cell","match_reg","match_regstat","regcoef","reg_core","stata_run_cmd", "stata_cmd_tab_fig_ref"), parcels)
 
   if (is.null(parcels$.reg)) {
     parcels = make_reg_extra_reg_combined_parcels(project_dir, parcels)

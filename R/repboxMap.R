@@ -22,7 +22,7 @@ example = function() {
 map_repbox_project = function(project_dir, parcels=list(), opts = repbox_map_opts()) {
   restore.point("repbox_project_map")
 
-  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core","art_tab_cell","base_regscalar"), parcels=parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","regcoef","reg_core","art_tab_cell","regscalar"), parcels=parcels)
 
 
   cell_df = parcels$art_tab_cell$art_tab_cell

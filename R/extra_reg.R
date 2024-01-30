@@ -1,11 +1,11 @@
 make_reg_extra_reg_combined_parcels = function(project_dir, parcels=NULL) {
   restore.point("make_reg_extra_reg_combined_parcels")
-  parcels = repdb_load_parcels(project_dir,c("base_regcoef","base_core", "base_extra_reg","base_regscalar","base_regstring"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("regcoef","reg_core", "base_extra_reg","regscalar","regstring"), parcels)
 
-  regcoef = parcels$base_regcoef$regcoef
-  reg = parcels$base_core$reg
-  regscalar = parcels$base_regscalar$regscalar
-  regstring = parcels$base_regstring$regstring
+  regcoef = parcels$regcoef$regcoef
+  reg = parcels$reg_core$reg
+  regscalar = parcels$regscalar$regscalar
+  regstring = parcels$regstring$regstring
 
   extra = parcels$base_extra_reg
   if (is.null(extra) | length(extra)==0) {

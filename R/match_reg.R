@@ -8,7 +8,7 @@
 match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbox_map_opts(), verbose=TRUE) {
   restore.point("match_project_reg")
 
-  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regcoef","base_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","regcoef","reg_core", "art_tab_note_paren_type","base_extra_reg"), parcels)
 
 
   art_reg = parcels$art_reg[["art_reg"]]
@@ -355,7 +355,7 @@ mdf_to_small_reg_matches = function(project_dir, mdf, parcels, opts, big_res) {
 
 match_reg_stats = function(project_dir, ma_df, parcels=NULL) {
   restore.point("match_reg_stats")
-  parcels = repdb_load_parcels(project_dir,c("art_reg","base_regscalar"), parcels)
+  parcels = repdb_load_parcels(project_dir,c("art_reg","regscalar"), parcels)
 
 
 
@@ -392,7 +392,7 @@ match_reg_stats = function(project_dir, ma_df, parcels=NULL) {
 
   # Match general regscalars
   def_df = get_regstat_map_def()
-  regscalar = parcels$base_regscalar$regscalar %>%
+  regscalar = parcels$regscalar$regscalar %>%
     filter(!is.na(scalar_val)) %>%
     left_join(def_df, by="scalar_name") %>%
     semi_join(art_regstat, by="stat_name") %>%
