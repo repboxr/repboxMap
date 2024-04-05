@@ -268,6 +268,10 @@ mdf_to_big_reg_matches = function(project_dir, mdf, parcels, opts, from_small=FA
   # Also map runid (better index than step for creating reports)
   ma_df = left_join_overwrite(ma_df, select(reg, step, runid) %>% unique(), by="step")
 
+  # Filter out rows where runid is NA. Can be the case if there was an error
+  # in analysing the regression results
+  ma_df = filter(ma_df, !is.na(runid))
+
 
   if (from_small) return(ma_df)
 
