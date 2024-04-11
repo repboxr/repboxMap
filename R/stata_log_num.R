@@ -103,7 +103,7 @@ log_extract_numbers = function(log_df) {
   if (NROW(pos)==0) return(NULL)
   num_str = stri_sub(logtxt,pos[,1],pos[,2]) %>% stri_replace_all_regex("[+,]","") %>% stri_replace_all_fixed("−","-")
 
-  line_start_pos = c(1,stri_locate_all_fixed(logtxt,"\n")[[1]][,1]+1)
+  line_start_pos = c(1,stri_locate_all_fixed(logtxt,"\n", omit_no_match = TRUE)[[1]][,1]+1)
   #tab_line_pos = stri_locate_all_fixed(logtxt,fixed("\n----"))[[1]]
 
   num_line = findInterval(pos[,1], line_start_pos)
