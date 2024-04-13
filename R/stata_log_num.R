@@ -70,7 +70,14 @@ log_extract_numbers = function(log_df) {
 
   ignore_commands = ignore_log_stata_commands()
 
-  rows = which(!log_df$cmd %in% ignore_commands & !log_df$is_reg & !is.na(log_df$logtxt) & !log_df$logtxt=="")
+  rows = which(
+    !log_df$cmd %in% ignore_commands &
+    !log_df$is_reg & !is.na(log_df$logtxt) &
+    !log_df$logtxt=="" &
+    # Update also ignore rows with missing data or error
+    !is.true(log_df$missing_data) &
+    !is.true(suppressWarnings(as.integer(log_df$errcode)>0))
+  )
   log_df = log_df[rows,]
 
   if (NROW(log_df)==0) return(NULL)
