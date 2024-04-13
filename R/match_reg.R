@@ -243,7 +243,7 @@ mdf_to_big_reg_matches = function(project_dir, mdf, parcels, opts, from_small=FA
       tab_par_match_score = sum(match_score == art_best_match_score)*(1+paren_type_bonus)
     ) %>%
     group_by(tabid) %>%
-    mutate(is_best_paren_type = tab_par_match_score == max(tab_par_match_score)) %>%
+    mutate(is_best_paren_type = suppressWarnings(tab_par_match_score == max(tab_par_match_score))) %>%
     ungroup() %>%
     # only keep best paren_type
     filter(is_best_paren_type)
