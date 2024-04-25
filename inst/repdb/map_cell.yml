@@ -32,6 +32,9 @@ fields:
 
   variant:
 
+  cterm:
+    descr: If a regression coefficient or se is mapped the cterm
+
   deci_dist:
     type: num
 

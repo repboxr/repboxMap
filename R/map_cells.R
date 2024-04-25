@@ -34,7 +34,7 @@ map_cells_and_blocks = function(project_dir, parcels=NULL, numa, opts) {
   org_cols = colnames(cell_df)
   cell_df = find_cells_reg_map(cell_df, parcels, small=TRUE, opts=opts)
 
-  cols = c("is_best_reg_match","is_reg_match","reg_match_best_runid","reg_match_runid","reg_deci_dist","reg_cmd","reg_best_cmd")
+  cols = c("is_best_reg_match","is_reg_match","reg_match_best_runid","reg_match_runid","reg_deci_dist","cterm", "reg_cmd","reg_best_cmd")
   new_cols = paste0("small_", cols)
 
   cell_df = rename.cols(cell_df, cols, new_cols)
@@ -188,6 +188,7 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
     cell_df$reg_match_variant = NA_character_
     cell_df$reg_match_best_variant = NA_character_
     cell_df$reg_deci_dist = NA_real_
+    cell_df$cterm = NA_character_
     cell_df$reg_cmd = NA_character_
     cell_df$reg_best_cmd = NA_character_
     cell_df$regid = NA_integer_
@@ -245,6 +246,7 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
   cell_df$reg_match_best_variant = NA_character_
   cell_df$reg_match_variant = NA_character_
   cell_df$reg_deci_dist = NA_real_
+  cell_df$cterm = NA_character_
 
 
 
@@ -350,7 +352,7 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
     # Also include approximate matches
     ind_df = match_all_rounded(c_df$num,xwidth = 2*opts$approx_map_max_deci_dist, c_df$num_deci, rcoef[[ptype]], ydeci = 14, add_num=TRUE)
 
-    numa = tibble(cellid = c_df$cellid[ind_df[[1]]], runid=rcoef$runid[ind_df[[2]]], variant = rcoef$variant[ind_df[[2]]],  deci_dist=ind_df$deci_dist)
+    numa = tibble(cellid = c_df$cellid[ind_df[[1]]], runid=rcoef$runid[ind_df[[2]]], variant = rcoef$variant[ind_df[[2]]], cterm=rcoef$cterm[ind_df[[2]]],  deci_dist=ind_df$deci_dist)
     numa = left_join(numa, select(c_df, cellid, best_runid, best_variant), by="cellid") %>%
       mutate(is_best_runid = (runid==best_runid)) %>%
       arrange(desc(is_best_runid), deci_dist, runid)
@@ -358,6 +360,7 @@ find_cells_reg_map = function(cell_df, parcels, small = FALSE, opts) {
 
     cellids = c_df$cellid
     numa_rows = match(cellids,numa$cellid)
+    cell_df$cterm[cellids] = numa$cterm[numa_rows]
     cell_df$reg_match_runid[cellids] = numa$runid[numa_rows]
     cell_df$reg_match_best_runid[cellids] = numa$best_runid[numa_rows]
 

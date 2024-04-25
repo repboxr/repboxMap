@@ -1,0 +1,84 @@
+# Fields with one entry per regression
+
+name: map_regcoef
+
+descr: |
+  Can be used together with art_regcoef to determine for each shown regression coefficient
+  and se (or other value in parentheses) the coefficient and se from the mapped Stata
+  regression output.
+
+index:
+  main_index: [mapid, variant, runid,  regid, cterm, coef_pos]
+
+fields:
+
+  mapid:
+    type: int
+    descr: In principal, we might consider multiple maps.
+
+  variant:
+    descr: Variant of the supplement regression that is matched
+
+  runid:
+    type: int
+
+  step:
+    descr: Identifies the code regression
+    type: int
+
+  tabid:
+
+  regid:
+    descr: ID of reg in article
+
+  coef_pos:
+    descr: Position of the coefficient in the article table (see art_regcoef)
+
+  cterm:
+    descr: Canoncial coefficient term derived from Stata output
+
+  shown_term:
+    descr: Shown term in regression output
+
+  code_label:
+    descr: Optional label of the variable in the code
+
+  code_coef:
+    type: num
+
+  code_paren:
+    type: num
+
+  paren_type:
+    descr: What is expected to be shown in the parentheses se, p or t?
+
+  coef_cellid:
+    type: int
+
+  paren_cellid:
+    type: int
+
+  coef_match_type:
+    type: int
+    val_descr:
+      0: No match at all
+      1: Best regression, exact
+      2: Best regression, approx
+      3: Not-best regression exact
+      4: Not-best regression approx
+      5: Best noreg match, exact
+      6: Best noreg match, approx
+      7: Noreg match but not best in block, exact
+
+  paren_match_type:
+    type: int
+    val_descr:
+      0: No match at all
+      1: Best regression, exact
+      2: Best regression, approx
+      3: Not-best regression exact
+      4: Not-best regression approx
+      5: Best noreg match, exact
+      6: Best noreg match, approx
+      7: Noreg match but not best in block, exact
+

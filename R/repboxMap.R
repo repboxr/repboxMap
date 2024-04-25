@@ -45,8 +45,11 @@ map_repbox_project = function(project_dir, parcels=list(), opts = repbox_map_opt
   # Create map for all article table cells
   parcels = map_cells_and_blocks(project_dir,parcels, numa, opts=opts)
 
-  # Update: Create map for regressions
+  # Create map for regressions
   parcels = repbox_store_map_reg(project_dir, parcels)
+
+  # Store information about mapped regression coefficients
+  parcels = map_reg_coef(project_dir, parcels)
 
   invisible(parcels)
 }
