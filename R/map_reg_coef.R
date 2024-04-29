@@ -1,6 +1,6 @@
 # For each map_reg generate the mapping on coefficient level
 example = function() {
-  project_dir = "~/repbox/projects_test/aejapp_6_1_5"
+  project_dir = "~/repbox/projects_gha/aejapp_3_1_6"
   rstudioapi::filesPaneNavigate(project_dir)
   map_reg_coef(project_dir)
 }
@@ -21,8 +21,11 @@ map_reg_coef = function(project_dir, parcels=list()) {
 
 
   map_reg = parcels$map_reg$map_reg
+  # TO DO: Check why there are duplicates in map_reg!
+  map_reg = map_reg[!duplicated(map_reg),]
 
   map_cell = left_join(map_cell, select(map_reg, regid, runid, step, variant, paren_type), by = c("regid", "runid", "variant"))
+  map_cell = map_cell[!duplicated(map_cell),]
 
   # For some reason some cells are mapped to regressions but there is no entry in map_reg
   # TO DO: Explore why
@@ -35,6 +38,7 @@ map_reg_coef = function(project_dir, parcels=list()) {
   regcoef = parcels$regcoef$regcoef
 
   long_map_coef = left_join(map_cell, regcoef, by=c("cterm","variant","step"))
+
 
   coef_df = long_map_coef %>% filter(num_type == 1) %>%
     select(tabid,regid,variant, mapid,runid, step, cterm,shown_term, code_label=label, coef_cellid=cellid, code_coef = coef, art_coef = num, coef_match_type = match_type)

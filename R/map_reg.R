@@ -46,6 +46,8 @@ repbox_store_map_reg = function(project_dir, parcels=list()) {
 
   colnames(map_reg)
 
+  map_reg = map_reg[!duplicated(map_reg),]
+
   repdb_check_data(map_reg, "map_reg")
 
   parcels$map_reg = list(map_reg=map_reg)
