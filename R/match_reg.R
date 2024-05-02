@@ -187,7 +187,13 @@ match_project_reg = function(project_dir, numa=NULL,  parcels=NULL, opts = repbo
   # 0 at least one tabid is not well specified
   parcels = parcels_add_tab_ref_to_run_df(project_dir, parcels)
 
+
   run_df = parcels$stata_run_cmd$stata_run_cmd
+  if (any(duplicated(run_df$runid))) {
+    stop("Stata run_df$runid has duplicates after mapping tabid. That shall not be the case. Please correct the RTutor code!")
+  }
+  #run_df_with_code_tabids = add_tabid_to_run_df(project_dir, parcels)
+
   ma_df = left_join_overwrite(ma_df, select(run_df, runid, code_tabid=tabid), by="runid") %>%
     mutate(tabid_ref_match = case_when(
       is.true(tabid > 0 & code_tabid > 0 & tabid==code_tabid) ~ 1L,

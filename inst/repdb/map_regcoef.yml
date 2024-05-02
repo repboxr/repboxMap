@@ -7,6 +7,9 @@ descr: |
   and se (or other value in parentheses) the coefficient and se from the mapped Stata
   regression output.
 
+  We allow multiple code_coef,code_se pair for one art_coef, art_se but only keep those
+  with the maximum match_score.
+
 index:
   main_index: [mapid, variant, runid,  regid, cterm, coef_pos]
 
@@ -58,27 +61,12 @@ fields:
   paren_cellid:
     type: int
 
-  coef_match_type:
-    type: int
-    val_descr:
-      0: No match at all
-      1: Best regression, exact
-      2: Best regression, approx
-      3: Not-best regression exact
-      4: Not-best regression approx
-      5: Best noreg match, exact
-      6: Best noreg match, approx
-      7: Noreg match but not best in block, exact
+  coef_deci_dist:
+    type: num
 
-  paren_match_type:
-    type: int
-    val_descr:
-      0: No match at all
-      1: Best regression, exact
-      2: Best regression, approx
-      3: Not-best regression exact
-      4: Not-best regression approx
-      5: Best noreg match, exact
-      6: Best noreg match, approx
-      7: Noreg match but not best in block, exact
+  paren_deci_dist:
+    type: num
+
+  match_score:
+    type: num
 

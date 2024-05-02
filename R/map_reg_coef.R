@@ -7,60 +7,119 @@ example = function() {
 
 map_reg_coef = function(project_dir, parcels=list()) {
   restore.point("map_reg_coef")
-  parcels = repboxDB::repdb_load_parcels(project_dir, c("map_reg","art_reg", "map_cell","regcoef"),parcels)
-
-  map_cell = parcels$map_cell$map_cell
-
-  if (is.null(map_cell)) return(parcels)
-
-
-  map_cell = map_cell %>%
-    filter(!is.na(cterm))
-
-  if (NROW(map_cell)==0) return(parcels)
-
+  parcels = repboxDB::repdb_load_parcels(project_dir, c("map_reg","art_reg","regcoef"),parcels)
 
   map_reg = parcels$map_reg$map_reg
-  # TO DO: Check why there are duplicates in map_reg!
-  map_reg = map_reg[!duplicated(map_reg),]
+  if (is.null(map_reg)) return(parcels)
 
-  map_cell = left_join(map_cell, select(map_reg, regid, runid, step, variant, paren_type), by = c("regid", "runid", "variant"))
-  map_cell = map_cell[!duplicated(map_cell),]
-
-  # For some reason some cells are mapped to regressions but there is no entry in map_reg
-  # TO DO: Explore why
-  if (any(!is.na(map_cell$step))) {
-    repbox_problem(type="map_cell_to_reg_without_map_reg",msg="We have entries in map_cell with regid > 0 but the regression is not included in map_reg. This is an RTutor bug that should be corrected.",fail_action = "msg",project_dir = project_dir)
-    map_cell = filter(map_cell, !is.na(step))
-  }
-
-
-  regcoef = parcels$regcoef$regcoef
-
-  long_map_coef = left_join(map_cell, regcoef, by=c("cterm","variant","step"))
-
-
-  coef_df = long_map_coef %>% filter(num_type == 1) %>%
-    select(tabid,regid,variant, mapid,runid, step, cterm,shown_term, code_label=label, coef_cellid=cellid, code_coef = coef, art_coef = num, coef_match_type = match_type)
-  paren_df = long_map_coef %>% filter(num_type >= 2 & num_type <=5) %>%
+  # We completely ignore cell_map which does not
+  # take into account that art_coef and art_paren in table must be mapped as
+  # pairs with code_coef and code_paren
+  art_coef = parcels$art_reg$art_regcoef %>%
+    left_join_overwrite(map_reg[,c("tabid","regid","mapid","step","variant","paren_type","runid")], by=c("regid")) %>%
+    filter(!is.na(paren), !is.na(coef), !is.na(tabid)) %>%
     mutate(
-      code_paren = case_when(
-        paren_type=="se" ~ se,
-        paren_type=="t" ~ t,
-        paren_type=="p" ~ p,
+      coef_deci_step = 10^-coef_num_deci,
+      coef_low = coef - 0.5*1.1*coef_deci_step,
+      coef_high = coef + 0.5*1.1*coef_deci_step,
+
+      paren_deci_step = 10^-paren_num_deci,
+      paren_low = paren - 0.5*1.1*paren_deci_step,
+      paren_high = paren + 0.5*1.1*paren_deci_step,
+      ind = seq_len(n())
+    ) %>%
+    rename(art_coef = coef, art_paren = paren)
+
+
+  deci_step = 10^-16
+  code_coef = parcels$regcoef$regcoef %>%
+    filter(!is.na(coef)) %>%
+    semi_join(map_reg, by="step") %>%
+    full_join(select(map_reg, step, regid, paren_type), by=c("step")) %>%
+    mutate(
+      paren = case_when(
+        paren_type == "se" ~ se,
+        paren_type == "t" ~ t,
+        paren_type == "p" ~ p,
         TRUE ~ NA_real_
       )
     ) %>%
-    select(tabid,regid,variant, mapid,runid, step, cterm, paren_type, paren_cellid=cellid, code_paren, art_paren = num, paren_match_type = match_type)
+    filter(!is.na(paren)) %>%
+    mutate(
+      coef_low = coef - 0.5*1.1*deci_step,
+      coef_high = coef + 0.5*1.1*deci_step,
 
-  map_coef = full_join(coef_df, paren_df, by = c("tabid", "regid", "variant", "mapid", "runid", "step", "cterm"))
+      paren_low = paren - 0.5*1.1*deci_step,
+      paren_high = paren + 0.5*1.1*deci_step,
+      ind = seq_len(n())
+    )
 
-  art_regcoef = parcels$art_reg$art_regcoef
-  map_coef = left_join(map_coef, select(art_regcoef,regid, coef_pos, coef_cellid ), by=c("regid","coef_cellid"))
-  map_coef = left_join(map_coef, select(art_regcoef,regid, paren_coef_pos = coef_pos, paren_cellid ), by=c("regid","paren_cellid"))
-  map_coef = map_coef %>% mutate(coef_pos = coalesce(coef_pos, paren_coef_pos))
+  # which(is.na(code_coef$coef_low))
+  # which(is.na(art_coef$coef_low))
+  # which(is.na(code_coef$paren))
+  # which(is.na(art_coef$paren_low))
 
-  parcels$map_regcoef = list(map_regcoef=map_coef)
+
+  art_coef_dt = as.data.table(art_coef)
+
+  code_coef_dt = as.data.table(code_coef)
+
+  # 1. Map by coef within each mapped regression
+  keys = c("regid", "step","coef_low","coef_high")
+  setkeyv(art_coef_dt, keys)
+  setkeyv(code_coef_dt, keys)
+
+  coef_ma = foverlaps(art_coef_dt, code_coef_dt,by.x = keys, by.y=keys,nomatch=NULL, which=TRUE) %>% as_tibble()
+  coef_ma[[1]] = art_coef_dt[["ind"]][coef_ma[[1]]]
+  coef_ma[[2]] = code_coef_dt[["ind"]][coef_ma[[2]]]
+
+
+  # 2. map by paren within each mapped regression
+  keys = c("regid", "step","paren_low","paren_high")
+  setkeyv(art_coef_dt, keys)
+  setkeyv(code_coef_dt, keys)
+  paren_ma = foverlaps(art_coef_dt, code_coef_dt,by.x = keys, by.y=keys,nomatch=NULL, which=TRUE) %>% as_tibble()
+
+  paren_ma[[1]] = art_coef_dt[["ind"]][paren_ma[[1]]]
+  paren_ma[[2]] = code_coef_dt[["ind"]][paren_ma[[2]]]
+
+
+  ma_ind = bind_rows(coef_ma, paren_ma)
+  ma_ind = ma_ind[!duplicated(ma_ind),]
+
+  ma = bind_cols(
+    art_coef[ma_ind[[1]], c("tabid", "mapid", "regid","step","runid", "paren_type", "coef_pos", "art_coef","art_paren","coef_num_deci","paren_num_deci","coef_cellid","paren_cellid")],
+    code_coef[ma_ind[[2]], c("coef","paren","cterm","variant","label","shown_term")]
+    ) %>%
+    rename(
+      code_coef = coef,
+      code_paren = paren,
+      code_label = label
+    ) %>%
+    mutate(
+      coef_deci_step =  10^-(coef_num_deci),
+      paren_deci_step = 10^-(paren_num_deci),
+      coef_deci_dist = abs(art_coef-code_coef) / coef_deci_step,
+      paren_deci_dist = abs(art_paren-code_paren) / paren_deci_step,
+      match_score = case_when(
+        coef_deci_dist <= 0.51 & paren_deci_dist <= 0.51 ~ 1,
+        coef_deci_dist <= 0.51 & paren_deci_dist <= 2 ~ 0.75,
+        coef_deci_dist <= 2 & paren_deci_dist <= 0.51 ~ 0.75,
+        coef_deci_dist <= 2 & paren_deci_dist <= 2 ~ 0.4,
+        coef_deci_dist <= 0.51 & abs(code_coef) / coef_deci_step >= 0.51 ~ 0.5,
+        paren_deci_dist <= 0.51 & abs(code_paren) / paren_deci_step >= 0.51  ~ 0.5
+      )
+    )
+
+  ma = ma %>%
+    group_by(step, cterm, regid) %>%
+    filter(
+      match_score == max(match_score)
+    ) %>%
+    ungroup()
+
+
+  parcels$map_regcoef = list(map_regcoef=ma)
   repdb_save_parcels(parcels["map_regcoef"], file.path(project_dir, "repdb"))
   return(parcels)
 }

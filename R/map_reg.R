@@ -42,7 +42,20 @@ repbox_store_map_reg = function(project_dir, parcels=list()) {
   map_reg = map_reg %>%
     left_join(match_reg, by=c("runid","regid","variant")) %>%
     left_join(art_reg,by=c("regid","artid","tabid")) %>%
-    mutate(lang = "stata")
+    mutate(lang = "stata") %>%
+    # only keep entries that are contained in regmatch
+    filter(!is.na(match_score))
+
+  # Only keep best regression maps
+  # Somewhat subjectively assign a value 0.3 if the regression
+  # is in a part of the code that references the table
+  map_reg = map_reg %>%
+    mutate(points = match_score + 0.3*tabid_ref_match) %>%
+    arrange(regid, desc(points)) %>%
+    group_by(regid) %>%
+    slice(1) %>%
+    ungroup()
+
 
   colnames(map_reg)
 
